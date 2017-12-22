@@ -111,7 +111,6 @@ contract('Colony Task Work Rating', () => {
 
     it('should fail if I try to rate a task too late', async () => {
       const taskId = await testDataGenerator.setupAssignedTask(colony);
-
       await testHelper.forwardTime((SECONDS_PER_DAY * 5) + 1, this);
       await testHelper.checkErrorRevert(colony.submitTaskWorkRating(taskId, WORKER_ROLE, RATING_2_SECRET, { from: EVALUATOR }));
       const ratingSecrets = await colony.getTaskWorkRatings.call(taskId);
@@ -120,7 +119,6 @@ contract('Colony Task Work Rating', () => {
 
     it('should fail if I try to submit work for a task using an invalid id', async () => {
       const taskId = await testDataGenerator.setupAssignedTask(colony);
-
       await testHelper.checkErrorRevert(colony.submitTaskWorkRating(10, WORKER_ROLE, RATING_2_SECRET, { from: EVALUATOR }));
       const ratingSecrets = await colony.getTaskWorkRatings.call(taskId);
       assert.equal(ratingSecrets[0], 0);

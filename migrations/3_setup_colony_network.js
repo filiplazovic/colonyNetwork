@@ -3,6 +3,7 @@
 const upgradableContracts = require('../helpers/upgradable-contracts');
 
 const ColonyNetwork = artifacts.require('./ColonyNetwork');
+const ColonyNetworkStaking = artifacts.require('./ColonyNetworkStaking');
 const EtherRouter = artifacts.require('./EtherRouter');
 const Resolver = artifacts.require('./Resolver');
 
@@ -13,6 +14,10 @@ module.exports = (deployer) => {
   deployer.then(() => ColonyNetwork.deployed())
     .then((instance) => {
       colonyNetwork = instance;
+      return ColonyNetworkStaking.deployed();
+    })
+    .then((instance) => {
+      colonyNetworkStaking = instance;
       return EtherRouter.deployed();
     })
     .then((instance) => {
