@@ -11,6 +11,7 @@ module.exports = (deployer) => {
   let etherRouter;
   let resolver;
   let colonyNetwork;
+  let colonyNetworkStaking;
   deployer.then(() => ColonyNetwork.deployed())
     .then((instance) => {
       colonyNetwork = instance;
@@ -26,7 +27,7 @@ module.exports = (deployer) => {
     })
     .then((instance) => {
       resolver = instance;
-      return upgradableContracts.setupUpgradableColonyNetwork(etherRouter, resolver, colonyNetwork);
+      return upgradableContracts.setupUpgradableColonyNetwork(etherRouter, resolver, colonyNetwork, colonyNetworkStaking);
     })
     .then(() => {
       console.log('### Colony Network setup with Resolver', resolver.address, 'and EtherRouter', etherRouter.address);

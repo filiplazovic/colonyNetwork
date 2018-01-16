@@ -14,23 +14,28 @@ import "./IColonyNetwork.sol";
 contract ColonyNetworkStaking is ColonyNetworkStorage {
 
   event Address(address _a);
+  event Bool(bool _b);
   function deposit(uint _amount) public {
     // Get CLNY address
     Token clny = Token(IColony(_colonies["Common Colony"]).getToken());
-    Address(clny);
+    uint256 networkBalance = clny.balanceOf(this);
     // Move some over.
     clny.transferFrom(msg.sender, this, _amount);
+    // Check it actually transferred
+    assert(clny.balanceOf(this)-networkBalance==_amount);
     // Note who it belongs to.
     stakedBalances[msg.sender] += _amount;
   }
 
-  function withdraw(uint amount) public {
+  function withdraw(uint _amount) public {
     uint256 balance = stakedBalances[msg.sender];
-    require(balance >= amount);
-    require(ReputationMiningCycle(reputationMiningCycle).hasSubmitted(msg.sender)==false);
-    stakedBalances[msg.sender] -= amount;
+    require(balance >= _amount);
+    bool hasRequesterSubmitted = ReputationMiningCycle(reputationMiningCycle).hasSubmitted(msg.sender);
+    Bool(hasRequesterSubmitted);
+    require(hasRequesterSubmitted==false);
+    stakedBalances[msg.sender] -= _amount;
     Token clny = Token(IColony(_colonies["Common Colony"]).getToken());
-    clny.transfer(msg.sender, amount);
+    clny.transfer(msg.sender, _amount);
   }
 
   function getStakedBalance(address _user) public view returns (uint) {
@@ -73,9 +78,9 @@ contract ColonyNetworkStaking is ColonyNetworkStorage {
     // TODO: Actually think about this function
     // Passing an array so that we don't incur the EtherRouter overhead for each staker if we looped over
     // it in ReputationMiningCycle.invalidateHash;
-    for (uint256 i = 0; i < stakers.length; i++) {
-      //We need to... do something. They get newly minted tokens, right?
-    }
+    // for (uint256 i = 0; i < stakers.length; i++) {
+    //   //We need to... do something. They get newly minted tokens, right?
+    // }
   }
 }
 
@@ -85,8 +90,8 @@ contract ReputationMiningCycle {
   mapping (bytes32 => mapping( uint256 => address[])) public submittedHashes;
   uint reputationMiningWindowOpenTimestamp;
   mapping (uint256 => Submission[]) disputeRounds;
-  uint256 nSubmittedHashes = 0;
-  uint256 nInvalidatedHashes = 0;
+  uint256 public nSubmittedHashes = 0;
+  uint256 public nInvalidatedHashes = 0;
   mapping (address => bool) public hasSubmitted;
 
   struct Submission {
@@ -111,6 +116,7 @@ contract ReputationMiningCycle {
   function submitNewHash(bytes32 newHash, uint256 nNodes, uint256 entry) public {
     //Check the ticket is an eligible one for them to claim
     require(entry <= IColonyNetwork(colonyNetworkAddress).getStakedBalance(msg.sender) / 10**15);
+    require(entry > 0);
     //Check the ticket is a winning one.
     // require((now-reputationMiningWindowOpenTimestamp) < 3600);
     // x = floor(uint((2**256 - 1) / 3600)
@@ -145,6 +151,7 @@ contract ReputationMiningCycle {
   function confirmNewHash(uint256 roundNumber) public {
     require (nSubmittedHashes - nInvalidatedHashes == 1);
     require (disputeRounds[roundNumber].length == 1); //i.e. this is the hash that 'survived' all the challenges
+    // TODO: Require some amount of time to have passed (i.e. people have had a chance to submit other hashes)
     Submission storage reputationRootHash = disputeRounds[roundNumber][0];
     IColonyNetwork(colonyNetworkAddress).setReputationRootHash(reputationRootHash.hash, reputationRootHash.nNodes, submittedHashes[disputeRounds[roundNumber][0].hash][disputeRounds[roundNumber][0].nNodes]);
     selfdestruct(colonyNetworkAddress);
