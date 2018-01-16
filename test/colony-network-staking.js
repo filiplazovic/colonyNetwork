@@ -70,10 +70,13 @@ contract('ColonyNetwork', (accounts) => {
     if (nSubmittedHashes > 0) {
       const nInvalidatedHashes = await repCycle.nInvalidatedHashes.call();
       if (nSubmittedHashes - nInvalidatedHashes === 1) {
-        repCycle.confirmNewHash(0);
+        repCycle.confirmNewHash(nSubmittedHashes === 1 ? 0 : 1); // Not a general solution - only works for one or two submissions.
+        // But for now, that's okay.
       } else {
+        // We shouldn't get here. If this fires during a test, you haven't finished writing the test.
         console.log("We're mid dispute process, and can't untangle from here"); // eslint-disable-line no-console
         process.exit(1);
+        return;
       }
     }
     let stakedBalance = await colonyNetwork.getStakedBalance.call(OTHER_ACCOUNT);
@@ -179,8 +182,76 @@ contract('ColonyNetwork', (accounts) => {
       stakedBalance = await colonyNetwork.getStakedBalance.call(MAIN_ACCOUNT);
       assert(stakedBalance.equals('1000000000000000000'));
     });
-    it('should allow a new reputation hash to be set if only one was submitted');
-    it('should not allow a new reputation hash to be set if more than one was submitted and they have not been elimintated');
+
+    it('should allow a new reputation hash to be set if only one was submitted', async () => {
+      await giveUserCLNYTokens(MAIN_ACCOUNT, new BigNumber('1000000000000000000'));
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'));
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'));
+
+      const addr = await colonyNetwork.getReputationMiningCycle.call();
+      await testHelper.forwardTime(3600, this);
+      const repCycle = ReputationMiningCycle.at(addr);
+      await repCycle.submitNewHash('0x12345678', 10, 10);
+      await repCycle.confirmNewHash(0);
+      const newAddr = await colonyNetwork.getReputationMiningCycle.call();
+      assert(newAddr !== 0x0);
+      assert(addr !== 0x0);
+      assert(newAddr !== addr);
+      const rootHash = await colonyNetwork.getReputationRootHash.call();
+      assert.equal(rootHash, '0x1234567800000000000000000000000000000000000000000000000000000000');
+      const rootHashNNodes = await colonyNetwork.getReputationRootHashNNodes.call();
+      assert(rootHashNNodes.equals(10));
+    });
+
+    it('should allow a new reputation hash to be set if all but one submitted have been elimintated', async () => {
+      await giveUserCLNYTokens(MAIN_ACCOUNT, new BigNumber('1000000000000000000'));
+      await giveUserCLNYTokens(OTHER_ACCOUNT, new BigNumber('1000000000000000000'));
+
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'));
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'));
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'), { from: OTHER_ACCOUNT });
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'), { from: OTHER_ACCOUNT });
+
+      const addr = await colonyNetwork.getReputationMiningCycle.call();
+      await testHelper.forwardTime(3600, this);
+      const repCycle = ReputationMiningCycle.at(addr);
+      await repCycle.submitNewHash('0x12345678', 10, 10);
+      await repCycle.submitNewHash('0x87654321', 10, 10, { from: OTHER_ACCOUNT });
+      await repCycle.invalidateHash(0, 1);
+      await repCycle.confirmNewHash(1);
+      const newAddr = await colonyNetwork.getReputationMiningCycle.call();
+      assert(newAddr !== 0x0);
+      assert(addr !== 0x0);
+      assert(newAddr !== addr);
+      const rootHash = await colonyNetwork.getReputationRootHash.call();
+      assert.equal(rootHash, '0x1234567800000000000000000000000000000000000000000000000000000000');
+      const rootHashNNodes = await colonyNetwork.getReputationRootHashNNodes.call();
+      assert(rootHashNNodes.equals(10));
+    });
+
+
+    it('should not allow a new reputation hash to be set if more than one was submitted and they have not been elimintated', async () => {
+      await giveUserCLNYTokens(MAIN_ACCOUNT, new BigNumber('1000000000000000000'));
+      await giveUserCLNYTokens(OTHER_ACCOUNT, new BigNumber('1000000000000000000'));
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'));
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'));
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'), { from: OTHER_ACCOUNT });
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'), { from: OTHER_ACCOUNT });
+      const addr = await colonyNetwork.getReputationMiningCycle.call();
+      await testHelper.forwardTime(3600, this);
+      const repCycle = ReputationMiningCycle.at(addr);
+      await repCycle.submitNewHash('0x12345678', 10, 10);
+      await repCycle.submitNewHash('0x87654321', 10, 10, { from: OTHER_ACCOUNT });
+      await testHelper.checkErrorRevert(repCycle.confirmNewHash(0));
+      const newAddr = await colonyNetwork.getReputationMiningCycle.call();
+      assert(newAddr !== 0x0);
+      assert(addr !== 0x0);
+      assert(newAddr === addr);
+      // Eliminate one so that the afterAll works.
+      await repCycle.invalidateHash(0, 0);
+    });
+
+
     it('should allow a new reputation hash to be set if more than one was submitted and all but one have been elimintated');
     it('should not allow the last reputation hash to be eliminated');
     it('should not allow someone to submit a new reputation hash if they are ineligible');

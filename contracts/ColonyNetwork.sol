@@ -60,6 +60,14 @@ contract ColonyNetwork is ColonyNetworkStorage {
     return (x.user, x.amount, x.skillId, x.colony, x.nUpdates, x.nPreviousUpdates);
   }
 
+  function getReputationRootHash() public view returns (bytes32) {
+    return reputationRootHash;
+  }
+
+  function getReputationRootHashNNodes() public view returns (uint256) {
+    return reputationRootHashNNodes;
+  }
+
   function createColony(bytes32 _name) public
   colonyKeyUnique(_name)
   {
