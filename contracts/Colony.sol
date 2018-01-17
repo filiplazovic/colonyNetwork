@@ -40,6 +40,13 @@ contract Colony is ColonyStorage {
     return token.mint(_wad);
   }
 
+  function mintTokensForColonyNetwork(uint _wad) public {
+    require(msg.sender == colonyNetworkAddress); // Only the colony Network can call this function
+    require(this == IColonyNetwork(colonyNetworkAddress).getColony("Common Colony")); // Function only valid on the Common Colony
+    token.mint(_wad);
+    token.transfer(colonyNetworkAddress, _wad);
+  }
+
   function addSkill(uint _parentSkillId) public {
     // TODO Secure this function.
     IColonyNetwork colonyNetwork = IColonyNetwork(colonyNetworkAddress);
