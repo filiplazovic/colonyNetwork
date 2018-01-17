@@ -117,6 +117,7 @@ contract ReputationMiningCycle {
     //Check the ticket is an eligible one for them to claim
     require(entry <= IColonyNetwork(colonyNetworkAddress).getStakedBalance(msg.sender) / 10**15);
     require(entry > 0);
+    // TODO: Require minimum stake, that is (much) more than the cost required to defend the valid submission.
     //Check the ticket is a winning one.
     // require((now-reputationMiningWindowOpenTimestamp) < 3600);
     // x = floor(uint((2**256 - 1) / 3600)
@@ -145,7 +146,6 @@ contract ReputationMiningCycle {
     submittedHashes[newHash][nNodes].push(msg.sender);
     //Note that they submitted it.
     submittedEntries[newHash][msg.sender][entry] = true;
-
   }
 
   function confirmNewHash(uint256 roundNumber) public {
@@ -165,6 +165,7 @@ contract ReputationMiningCycle {
 
     // We require that we actually had an opponent - can't invalidate the last hash.
     // If we try, then the next require should catch it.
+    require(disputeRounds[round].length > opponentIdx);
     require(disputeRounds[round][opponentIdx].hash!="");
     disputeRounds[round+1].push(disputeRounds[round][opponentIdx]);
     delete disputeRounds[round][opponentIdx];

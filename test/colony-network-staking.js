@@ -70,7 +70,7 @@ contract('ColonyNetwork', (accounts) => {
     if (nSubmittedHashes > 0) {
       const nInvalidatedHashes = await repCycle.nInvalidatedHashes.call();
       if (nSubmittedHashes - nInvalidatedHashes === 1) {
-        repCycle.confirmNewHash(nSubmittedHashes === 1 ? 0 : 1); // Not a general solution - only works for one or two submissions.
+        await repCycle.confirmNewHash(nSubmittedHashes.equals(1) ? 0 : 1); // Not a general solution - only works for one or two submissions.
         // But for now, that's okay.
       } else {
         // We shouldn't get here. If this fires during a test, you haven't finished writing the test.
@@ -93,7 +93,7 @@ contract('ColonyNetwork', (accounts) => {
     await clny.transfer(0x0, userBalance, { from: MAIN_ACCOUNT });
   });
 
-  describe('when initialised', () => {
+  describe.only('when initialised', () => {
     it('should allow miners to stake CLNY', async () => {
       await giveUserCLNYTokens(OTHER_ACCOUNT, 9000);
       await clny.approve(colonyNetwork.address, 5000, { from: OTHER_ACCOUNT });
@@ -251,12 +251,39 @@ contract('ColonyNetwork', (accounts) => {
       await repCycle.invalidateHash(0, 0);
     });
 
+    it('should not allow the last reputation hash to be eliminated', async () => {
+      await giveUserCLNYTokens(MAIN_ACCOUNT, new BigNumber('1000000000000000000'));
+      await giveUserCLNYTokens(OTHER_ACCOUNT, new BigNumber('1000000000000000000'));
 
-    it('should allow a new reputation hash to be set if more than one was submitted and all but one have been elimintated');
-    it('should not allow the last reputation hash to be eliminated');
-    it('should not allow someone to submit a new reputation hash if they are ineligible');
-    it('should not allow a new reputation hash to be set if two or more were submitted');
-    it('should punish stakers if they misbehave');
-    it('should reward stakers if they submitted the agreed new hash');
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'));
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'));
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'), { from: OTHER_ACCOUNT });
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'), { from: OTHER_ACCOUNT });
+
+      const addr = await colonyNetwork.getReputationMiningCycle.call();
+      await testHelper.forwardTime(3600, this);
+      const repCycle = ReputationMiningCycle.at(addr);
+      await repCycle.submitNewHash('0x12345678', 10, 10);
+      await repCycle.submitNewHash('0x87654321', 10, 10, { from: OTHER_ACCOUNT });
+      await repCycle.invalidateHash(0, 1);
+      await testHelper.checkErrorRevert(repCycle.invalidateHash(1, 0));
+    });
+
+
+    it('should not allow someone to submit a new reputation hash if they are ineligible', async () => {
+      await giveUserCLNYTokens(MAIN_ACCOUNT, new BigNumber('1000000000000000000'));
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'));
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'));
+
+      const addr = await colonyNetwork.getReputationMiningCycle.call();
+      const repCycle = ReputationMiningCycle.at(addr);
+      await testHelper.checkErrorRevert(repCycle.submitNewHash('0x12345678', 10, 10));
+      const nSubmittedHashes = await repCycle.nSubmittedHashes.call();
+      assert(nSubmittedHashes.equals(0));
+    });
+
+    it('should punish all stakers if they misbehave (and report a bad hash)');
+    it('should reward all stakers if they submitted the agreed new hash');
+    it('should cope with many hashes being submitted and eliminated before a winner is assigned');
   });
 });
