@@ -282,8 +282,39 @@ contract('ColonyNetwork', (accounts) => {
       assert(nSubmittedHashes.equals(0));
     });
 
-    it('should punish all stakers if they misbehave (and report a bad hash)');
+    it('should punish all stakers if they misbehave (and report a bad hash)', async () => {
+      await giveUserCLNYTokens(MAIN_ACCOUNT, new BigNumber('1000000000000000000'));
+      await giveUserCLNYTokens(OTHER_ACCOUNT, new BigNumber('1000000000000000000'));
+      await giveUserCLNYTokens(accounts[2], new BigNumber('1000000000000000000'));
+
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'));
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'));
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'), { from: OTHER_ACCOUNT });
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'), { from: OTHER_ACCOUNT });
+      let balance = await colonyNetwork.getStakedBalance(OTHER_ACCOUNT);
+      assert(balance.equals('1000000000000000000'));
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'), { from: accounts[2] });
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'), { from: accounts[2] });
+      let balance2 = await colonyNetwork.getStakedBalance(accounts[2]);
+      assert(balance.equals('1000000000000000000'));
+
+      const addr = await colonyNetwork.getReputationMiningCycle.call();
+      await testHelper.forwardTime(3600, this);
+      const repCycle = ReputationMiningCycle.at(addr);
+      await repCycle.submitNewHash('0x12345678', 10, 10);
+      await repCycle.submitNewHash('0x87654321', 10, 10, { from: OTHER_ACCOUNT });
+      await repCycle.submitNewHash('0x87654321', 10, 10, { from: accounts[2] });
+      await repCycle.invalidateHash(0, 1);
+      balance = await colonyNetwork.getStakedBalance(OTHER_ACCOUNT);
+      assert.equal(balance.toString(), '0', 'Account was not punished properly');
+      balance2 = await colonyNetwork.getStakedBalance(accounts[2]);
+      assert.equal(balance2.toString(), '0', 'Account was not punished properly');
+    });
+
     it('should reward all stakers if they submitted the agreed new hash');
+    it('should not allow a user to back more than one hash in a single cycle');
+    it('should allow a user to back the same hash more than once in a same cycle with different valid entries');
+    it('should only allow 12 entries to back a single hash in each cycle');
     it('should cope with many hashes being submitted and eliminated before a winner is assigned');
   });
 });

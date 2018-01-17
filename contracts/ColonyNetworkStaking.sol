@@ -67,6 +67,7 @@ contract ColonyNetworkStaking is ColonyNetworkStorage {
     require(msg.sender == reputationMiningCycle);
     for (uint256 i = 0; i < stakers.length; i++) {
       // This is pretty harsh! Are we happy with this?
+      // Alternative: lose more than they would have gained for backing the right hash.
       stakedBalances[stakers[i]] = 0;
     }
     // TODO: Where do these staked tokens go?
@@ -160,7 +161,7 @@ contract ReputationMiningCycle {
   function invalidateHash(uint256 round, uint256 idx) public {
     // TODO: Require that it has failed a challenge, or failed to respond in time.
     // Move its opponent on to the next stage.
-    uint256 opponentIdx = (idx % 2 == 1 ? idx-1 : idx+1);
+    uint256 opponentIdx = (idx % 2 == 1 ? idx-1 : idx + 1);
     // TODO: Check opponent is good to move on - we're assuming both haven't timed out here.
 
     // We require that we actually had an opponent - can't invalidate the last hash.
@@ -172,7 +173,7 @@ contract ReputationMiningCycle {
     nInvalidatedHashes += 1;
 
     // Punish the people who proposed this
-    IColonyNetwork(colonyNetworkAddress).punishStakers(submittedHashes[disputeRounds[round][0].hash][disputeRounds[round][0].nNodes]);
+    IColonyNetwork(colonyNetworkAddress).punishStakers(submittedHashes[disputeRounds[round][idx].hash][disputeRounds[round][idx].nNodes]);
 
     //TODO: Can we do some deleting to make calling this as cheap as possible for people?
   }
