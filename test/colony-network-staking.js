@@ -569,6 +569,22 @@ contract('ColonyNetwork', (accounts) => {
       await repCycle.confirmNewHash(3);
     });
 
-    it('should not allow a hash to be invalidated multiple times, moving multiple copies of its opponent on to the next stage');
+    it('should not allow a hash to be invalidated multiple times, which would move extra copies of its opponent to the next stage', async () => {
+      await giveUserCLNYTokens(MAIN_ACCOUNT, new BigNumber('1000000000000000000'));
+      await giveUserCLNYTokens(OTHER_ACCOUNT, new BigNumber('1000000000000000000'));
+
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'));
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'));
+      await clny.approve(colonyNetwork.address, new BigNumber('1000000000000000000'), { from: OTHER_ACCOUNT });
+      await colonyNetwork.deposit(new BigNumber('1000000000000000000'), { from: OTHER_ACCOUNT });
+
+      const addr = await colonyNetwork.getReputationMiningCycle.call();
+      await testHelper.forwardTime(3600, this);
+      const repCycle = ReputationMiningCycle.at(addr);
+      await repCycle.submitNewHash('0x12345678', 10, 10);
+      await repCycle.submitNewHash('0x87654321', 10, 10, { from: OTHER_ACCOUNT });
+      await accommodateChallengeAndInvalidateHash(this, 0, 1);
+      testHelper.checkErrorRevert(accommodateChallengeAndInvalidateHash(this, 0, 1));
+    });
   });
 });
