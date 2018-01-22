@@ -9,7 +9,8 @@ fs.readdirSync('./contracts/').forEach((contractName) => {
     'EtherRouter.sol',
     'Migrations.sol',
     'Resolver.sol',
-    'Token.sol'].indexOf(contractName) > -1) {
+    'Token.sol',
+    'SimpleMultiSig.sol'].indexOf(contractName) > -1) {
     return;
   }
   const src = fs.readFileSync(`./contracts/${contractName}`, 'utf8');
