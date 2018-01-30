@@ -17,16 +17,20 @@ import testHelper from '../helpers/test-helper';
 module.exports = {
   async setupAssignedTask(
     colony,
-    dueDate = testHelper.currentBlockTime(),
+    dueDate,
     evaluator = EVALUATOR,
     worker = WORKER,
   ) {
+    let dueDateTimestamp = dueDate;
+    if (!dueDateTimestamp) {
+      dueDateTimestamp = await testHelper.currentBlockTime();
+    }
     await colony.makeTask(SPECIFICATION_HASH);
     let taskId = await colony.getTaskCount.call();
     taskId = taskId.toNumber();
     await colony.setTaskRoleUser(taskId, EVALUATOR_ROLE, evaluator);
     await colony.setTaskRoleUser(taskId, WORKER_ROLE, worker);
-    const txData = await colony.contract.setTaskDueDate.getData(taskId, dueDate);
+    const txData = await colony.contract.setTaskDueDate.getData(taskId, dueDateTimestamp);
     await colony.proposeTaskChange(txData, 0, MANAGER_ROLE);
     const transactionId = await colony.getTransactionCount.call();
     await colony.approveTaskChange(transactionId, WORKER_ROLE, { from: worker });
