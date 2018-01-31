@@ -182,9 +182,9 @@ contract ReputationMiningCycle {
     // TODO: Require minimum stake, that is (much) more than the cost required to defend the valid submission.
     // Check the ticket is a winning one.
     // TODO Figure out how to uncomment the next line, but not break tests sporadically.
-    // require((now-reputationMiningWindowOpenTimestamp) < 3600);
+    // require((now-reputationMiningWindowOpenTimestamp) <= 3600);
     // x = floor(uint((2**256 - 1) / 3600)
-    if (now-reputationMiningWindowOpenTimestamp < 3600) {
+    if (now-reputationMiningWindowOpenTimestamp <= 3600) {
       uint x = 32164469232587832062103051391302196625908329073789045566515995557753647122;
       uint target = (now - reputationMiningWindowOpenTimestamp ) * x;
       require(uint256(keccak256(msg.sender, entry, newHash)) < target);
@@ -263,7 +263,7 @@ contract ReputationMiningCycle {
       require(disputeRounds[round].length > opponentIdx);
       require(disputeRounds[round][opponentIdx].hash!="");
       // Require that it has failed a challenge (i.e. failed to respond in time)
-      require(now - disputeRounds[round][idx].lastResponseTimestamp > 600); //'In time' is ten minutes here.
+      require(now - disputeRounds[round][idx].lastResponseTimestamp >= 600); //'In time' is ten minutes here.
 
       if (disputeRounds[round][opponentIdx].challengeStepCompleted > disputeRounds[round][idx].challengeStepCompleted) {
         // If true, then the opponent completed one more challenge round than the submission being invalidated, so we
