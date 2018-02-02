@@ -55,7 +55,7 @@ contract('Colony Reputation Updates', () => {
     it('should be readable', async () => {
       const taskId = await testDataGenerator.setupRatedTask(commonColony);
       await commonColony.finalizeTask(taskId);
-      const repLogEntryManager = await colonyNetwork.getReputationUpdateLogEntry.call(0);
+      const repLogEntryManager = await colonyNetwork.getReputationUpdateLogEntry.call(0, true);
       assert.equal(repLogEntryManager[0], MANAGER);
       assert.equal(repLogEntryManager[1].toNumber(), ((1000 * 1e18) / 50));
       assert.equal(repLogEntryManager[2].toNumber(), 0);
@@ -63,7 +63,7 @@ contract('Colony Reputation Updates', () => {
       assert.equal(repLogEntryManager[4].toNumber(), 2);
       assert.equal(repLogEntryManager[5].toNumber(), 0);
 
-      const repLogEntryWorker = await colonyNetwork.getReputationUpdateLogEntry.call(1);
+      const repLogEntryWorker = await colonyNetwork.getReputationUpdateLogEntry.call(1, true);
       assert.equal(repLogEntryWorker[0], WORKER);
       assert.equal(repLogEntryWorker[1].toNumber(), 200000000000000000000);
       assert.equal(repLogEntryWorker[2].toNumber(), 0);
@@ -134,7 +134,7 @@ contract('Colony Reputation Updates', () => {
         );
         await commonColony.finalizeTask(taskId);
 
-        const repLogEntryManager = await colonyNetwork.getReputationUpdateLogEntry.call(0);
+        const repLogEntryManager = await colonyNetwork.getReputationUpdateLogEntry.call(0, true);
         assert.equal(repLogEntryManager[0], MANAGER);
         assert.equal(repLogEntryManager[1].toNumber(), rating.reputationChangeFactorManager.mul(100).toNumber());
         assert.equal(repLogEntryManager[2].toNumber(), 0);
@@ -142,7 +142,7 @@ contract('Colony Reputation Updates', () => {
         assert.equal(repLogEntryManager[4].toNumber(), 2);
         assert.equal(repLogEntryManager[5].toNumber(), 0);
 
-        const repLogEntryWorker = await colonyNetwork.getReputationUpdateLogEntry.call(1);
+        const repLogEntryWorker = await colonyNetwork.getReputationUpdateLogEntry.call(1, true);
         assert.equal(repLogEntryWorker[0], WORKER);
         assert.equal(repLogEntryWorker[1].toNumber(), rating.reputationChangeFactorWorker.mul(200).toNumber());
         assert.equal(repLogEntryWorker[2].toNumber(), 0);
@@ -153,25 +153,25 @@ contract('Colony Reputation Updates', () => {
     });
 
     it('should not be able to be appended by an account that is not a colony', async () => {
-      const lengthBefore = await colonyNetwork.getReputationUpdateLogLength.call();
+      const lengthBefore = await colonyNetwork.getReputationUpdateLogLength.call(true);
       await testHelper.checkErrorRevert(colonyNetwork.appendReputationUpdateLog(OTHER, 1, 2));
-      const lengthAfter = await colonyNetwork.getReputationUpdateLogLength.call();
+      const lengthAfter = await colonyNetwork.getReputationUpdateLogLength.call(true);
       assert.equal(lengthBefore.toNumber(), lengthAfter.toNumber());
     });
 
     it('should populate nPreviousUpdates correctly', async () => {
-      let initialRepLogLength = await colonyNetwork.getReputationUpdateLogLength.call();
+      let initialRepLogLength = await colonyNetwork.getReputationUpdateLogLength.call(true);
       initialRepLogLength = initialRepLogLength.toNumber();
       const taskId1 = await testDataGenerator.setupRatedTask(commonColony);
       await commonColony.finalizeTask(taskId1);
-      let repLogEntry = await colonyNetwork.getReputationUpdateLogEntry.call(initialRepLogLength);
+      let repLogEntry = await colonyNetwork.getReputationUpdateLogEntry.call(initialRepLogLength, true);
       const nPrevious = repLogEntry[5].toNumber();
-      repLogEntry = await colonyNetwork.getReputationUpdateLogEntry.call(initialRepLogLength + 1);
+      repLogEntry = await colonyNetwork.getReputationUpdateLogEntry.call(initialRepLogLength + 1, true);
       assert.equal(repLogEntry[5].toNumber(), 2 + nPrevious);
 
       const taskId2 = await testDataGenerator.setupRatedTask(commonColony);
       await commonColony.finalizeTask(taskId2);
-      repLogEntry = await colonyNetwork.getReputationUpdateLogEntry.call(initialRepLogLength + 2);
+      repLogEntry = await colonyNetwork.getReputationUpdateLogEntry.call(initialRepLogLength + 2, true);
       assert.equal(repLogEntry[5].toNumber(), 4 + nPrevious);
     });
 
@@ -184,7 +184,7 @@ contract('Colony Reputation Updates', () => {
       await commonColony.setTaskSkill(taskId1, 2);
       await commonColony.finalizeTask(taskId1);
 
-      let repLogEntryWorker = await colonyNetwork.getReputationUpdateLogEntry.call(1);
+      let repLogEntryWorker = await colonyNetwork.getReputationUpdateLogEntry.call(1, true);
       const result = new BigNumber('1').mul(WORKER_PAYOUT);
       assert.equal(repLogEntryWorker[1].toNumber(), result.toNumber());
       assert.equal(repLogEntryWorker[4].toNumber(), 6);
@@ -192,7 +192,7 @@ contract('Colony Reputation Updates', () => {
       const taskId2 = await testDataGenerator.setupRatedTask(commonColony);
       await commonColony.setTaskSkill(taskId2, 3);
       await commonColony.finalizeTask(taskId2);
-      repLogEntryWorker = await colonyNetwork.getReputationUpdateLogEntry.call(3);
+      repLogEntryWorker = await colonyNetwork.getReputationUpdateLogEntry.call(3, true);
       assert.equal(repLogEntryWorker[1].toNumber(), result.toNumber());
       assert.equal(repLogEntryWorker[4].toNumber(), 8); // Negative reputation change means children change as well.
     });
