@@ -1,6 +1,6 @@
 /* globals artifacts */
 
-import { toBN } from "web3-utils";
+import { toBN, BN } from "web3-utils";
 
 import {
   MANAGER,
@@ -15,11 +15,13 @@ import {
 } from "../helpers/constants";
 import { getRandomString, getTokenArgs, checkErrorRevert, web3GetBalance, forwardTime, bnSqrt } from "../helpers/test-helper";
 import { fundColonyWithTokens, setupRatedTask } from "../helpers/test-data-generator";
+import ReputationMiningClient from "../client/main";
 
 const EtherRouter = artifacts.require("EtherRouter");
 const IColony = artifacts.require("IColony");
 const IColonyNetwork = artifacts.require("IColonyNetwork");
 const Token = artifacts.require("Token");
+const ReputationMiningCycle = artifacts.require("ReputationMiningCycle");
 
 contract("Colony Funding", addresses => {
   let COLONY_KEY;
@@ -412,11 +414,14 @@ contract("Colony Funding", addresses => {
     const totalReputation = toBN(80 * 1e18);
     const userReputation1 = toBN(50 * 1e18);
     const userReputation2 = toBN(30 * 1e18);
+    const minerStake = toBN(1e18);
     const userAddress1 = addresses[0];
     const userAddress2 = addresses[1];
     const userAddress3 = addresses[2];
+    const minerAddress = addresses[3];
     let initialSquareRoots1;
     let initialSquareRoots2;
+    let client;
 
     beforeEach(async () => {
       await fundColonyWithTokens(colony, otherToken, initialFunding.toString());
@@ -454,6 +459,39 @@ contract("Colony Funding", addresses => {
         denominator.toString(),
         totalAmount.toString()
       ];
+
+      await colonyNetwork.startNextCycle();
+
+      const commonColonyAddress = await colonyNetwork.getColony("Common Colony");
+      const commonColony = IColony.at(commonColonyAddress);
+      await commonColony.mintTokens(minerStake.toString());
+      await commonColony.bootstrapColony([minerAddress], [minerStake.toString()]);
+      const clnyAddress = await commonColony.getToken.call();
+      const clny = Token.at(clnyAddress);
+      await clny.approve(colonyNetwork.address, minerStake.toString(), { from: minerAddress });
+      await colonyNetwork.deposit(minerStake.toString(), { from: minerAddress });
+
+      let addr = await colonyNetwork.getReputationMiningCycle.call();
+      let repCycle = ReputationMiningCycle.at(addr);
+      await forwardTime(3600, this);
+      await repCycle.submitRootHash("0x12345678", 10, 10, {
+        from: minerAddress
+      });
+      await repCycle.confirmNewHash(0);
+
+      client = new ReputationMiningClient(userAddress1, process.env.SOLIDITY_COVERAGE ? 8555 : 8545);
+      await client.initialise(colonyNetwork.address);
+      await client.addLogContentsToReputationTree();
+
+      const newRootHash = await client.getRootHash();
+
+      await forwardTime(3600, this);
+      addr = await colonyNetwork.getReputationMiningCycle.call();
+      repCycle = ReputationMiningCycle.at(addr);
+      await repCycle.submitRootHash(newRootHash, 10, 10, {
+        from: minerAddress
+      });
+      await repCycle.confirmNewHash(0);
     });
 
     it("should be able to get global reward payout count", async () => {
@@ -463,11 +501,20 @@ contract("Colony Funding", addresses => {
       assert.equal(count.toNumber(), 1);
     });
 
-    it("should be able to get user reward payout count", async () => {
+    it.only("should be able to get user reward payout count", async () => {
       const tx = await colony.startNextRewardPayout(otherToken.address);
       const payoutId = tx.logs[0].args.id;
 
-      await colony.claimRewardPayout(payoutId, initialSquareRoots1, userReputation1.toString(), totalReputation.toString(), {
+      let key = `0x${new BN(colony.address.slice(2), 16).toString(16, 40)}`;
+      key += `${new BN("3").toString(16, 64)}`;
+      key += `${new BN(userAddress1.slice(2), 16).toString(16, 40)}`;
+
+      const value = client.reputations[key];
+      const [branchMask, siblings] = await client.getProof(key);
+
+      const reputationData = [key, value, branchMask, siblings];
+
+      await colony.claimRewardPayout(payoutId, initialSquareRoots1, ...reputationData, totalReputation.toString(), {
         from: userAddress1
       });
 

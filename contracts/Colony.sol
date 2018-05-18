@@ -22,10 +22,9 @@ import "./ERC20Extended.sol";
 import "./IColonyNetwork.sol";
 import "./IColony.sol";
 import "./ColonyStorage.sol";
-import "./PatriciaTree/PatriciaTreeProofs.sol";
 
 
-contract Colony is ColonyStorage, PatriciaTreeProofs {
+contract Colony is ColonyStorage {
 
   // This function, exactly as defined, is used in build scripts. Take care when updating.
   // Version number should be upped with every change in Colony or its dependency contracts or libraries.

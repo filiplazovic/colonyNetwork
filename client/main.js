@@ -520,6 +520,7 @@ class ReputationMiningClient {
       value = this.getValueAsBytes(reputationScore, this.nReputations + 1, index);
       this.nReputations += 1;
     }
+
     await this.reputationTree.insert(key, value, { gasLimit: 4000000 });
     // If successful, add to our JSON.
     this.reputations[key] = value;

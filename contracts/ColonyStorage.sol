@@ -21,9 +21,9 @@ pragma experimental "v0.5.0";
 import "../lib/dappsys/auth.sol";
 import "./ERC20Extended.sol";
 import "./IColonyNetwork.sol";
+import "./PatriciaTree/PatriciaTreeProofs.sol";
 
-
-contract ColonyStorage is DSAuth {
+contract ColonyStorage is DSAuth, PatriciaTreeProofs {
   // When adding variables, do not make them public, otherwise all contracts that inherit from
   // this one will have the getters. Make custom getters in the contract that seems most appropriate,
   // and add it to IColony.sol
