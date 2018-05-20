@@ -36,6 +36,10 @@ contract ColonyStorage is DSAuth {
   address colonyNetworkAddress;
   ERC20Extended token;
 
+  uint256 tokenSupplyCeiling;
+  uint256 tokenIssuanceRate;
+  uint256 lastIssuedTimestamp;
+
   // Mapping function signature to 2 task roles whose approval is needed to execute
   mapping (bytes4 => uint8[2]) reviewers;
   uint256 taskChangeNonce; // Made obsolete in #203

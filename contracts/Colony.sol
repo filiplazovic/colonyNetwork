@@ -18,6 +18,7 @@
 pragma solidity ^0.4.23;
 pragma experimental "v0.5.0";
 
+import "../lib/dappsys/math.sol";
 import "./ERC20Extended.sol";
 import "./IColonyNetwork.sol";
 import "./IColony.sol";
@@ -27,7 +28,7 @@ import "./Authority.sol";
 import "./EtherRouter.sol";
 
 
-contract Colony is ColonyStorage, PatriciaTreeProofs {
+contract Colony is ColonyStorage, PatriciaTreeProofs, DSMath {
 
   // This function, exactly as defined, is used in build scripts. Take care when updating.
   // Version number should be upped with every change in Colony or its dependency contracts or libraries.
@@ -101,6 +102,9 @@ contract Colony is ColonyStorage, PatriciaTreeProofs {
   function mintTokens(uint _wad) public
   auth
   {
+    require(add(_wad, token.totalSupply()) <= tokenCeiling);
+    require(lastIssuedTimestamp > 4 weeks);
+    require(_wad <= (token.totalSupply() / 10));
     return token.mint(_wad);
   }
 
